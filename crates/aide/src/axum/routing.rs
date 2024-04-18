@@ -8,12 +8,11 @@ use crate::{
     openapi::{Operation, PathItem, ReferenceOr, Response, StatusCode},
     Error,
 };
-use axum::body::HttpBody;
-use axum::routing::Route;
 use axum::{
-    body::Body,
+    body::{Body, HttpBody},
     handler::Handler,
-    routing::{self, MethodRouter},
+    response::IntoResponse,
+    routing::{self, MethodRouter, Route},
     BoxError,
 };
 use bytes::Bytes;
@@ -299,6 +298,21 @@ where
             operations: self.operations,
         }
     }
+
+    /// This method wraps a layer around the [`ApiMethodRouter`]
+    /// For further information see [`axum::routing::method_routing::MethodRouter::route_layer`]
+    pub fn route_layer<L>(self, layer: L) -> Self
+    where
+        L: Layer<Route<B, Infallible>> + Clone + Send + 'static,
+        L::Service: Service<Request<B>, Error = Infallible> + Clone + Send + 'static,
+        <L::Service as Service<Request<B>>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request<B>>>::Future: Send + 'static,
+    {
+        ApiMethodRouter {
+            router: self.router.route_layer(layer),
+            operations: self.operations,
+        }
+    }
 }
 
 impl<S, B, E> ApiMethodRouter<S, B, E>
@@ -325,7 +339,7 @@ where
     /// See [`axum::routing::MethodRouter::merge`] for more information.
     pub fn merge<M>(mut self, other: M) -> Self
     where
-        M: Into<ApiMethodRouter<S, B, E>>
+        M: Into<ApiMethodRouter<S, B, E>>,
     {
         let other = other.into();
         self.operations.extend(other.operations);
