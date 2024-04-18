@@ -699,6 +699,14 @@ mod private {
     pub trait Sealed {}
 }
 
+impl<I, O, L, H, T, S, B, B2> OperationHandler<I, O> for axum::handler::Layered<L, H, T, S, B, B2>
+where
+    H: Handler<T, S, B> + OperationHandler<I, O>,
+    I: OperationInput,
+    O: OperationOutput,
+{
+}
+
 /// A trait that extens [`axum::handler::Handler`] with API operation
 /// details.
 ///
